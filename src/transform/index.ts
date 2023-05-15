@@ -7,6 +7,8 @@ import { transformRequestBodies } from "./request.js";
 import { getResponseTypes, transformResponsesObj } from "./responses.js";
 import { transformSchemaObjMap } from "./schema.js";
 
+const httpMethods = ["get", "put", "post", "delete", "options", "head", "patch", "trace"] as const;
+
 export function transformAll(schema: any, ctx: GlobalContext): Record<string, string> {
   const readonly = tsReadonly(ctx.immutableTypes);
   const output: Record<string, string> = {};
@@ -152,7 +154,9 @@ export function transformAll(schema: any, ctx: GlobalContext): Record<string, st
     for (const [path, methods] of Object.entries(schema.paths)) {
       output.handlers += ` ${getOperationIdFromPath(path)}: {\n`;
       for (const [method, op] of Object.entries(methods as Record<string, { operationId?: string }>)) {
-        output.handlers += ` ${method}: express<SLocals, RLocals>["${getOperationId(op, method, path)}"]["handler"]\n`;
+        if (httpMethods.includes(method as any)) {
+          output.handlers += ` ${method}: express<SLocals, RLocals>["${getOperationId(op, method, path)}"]["handler"]\n`;
+        }
       }
       output.handlers += ` }\n`;
     }
