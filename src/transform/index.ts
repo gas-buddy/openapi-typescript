@@ -155,7 +155,11 @@ export function transformAll(schema: any, ctx: GlobalContext): Record<string, st
       output.handlers += ` ${getOperationIdFromPath(path)}: {\n`;
       for (const [method, op] of Object.entries(methods as Record<string, { operationId?: string }>)) {
         if (httpMethods.includes(method as any)) {
-          output.handlers += ` ${method}: express<SLocals, RLocals>["${getOperationId(op, method, path)}"]["handler"]\n`;
+          output.handlers += ` ${method}: express<SLocals, RLocals>["${getOperationId(
+            op,
+            method,
+            path
+          )}"]["handler"]\n`;
         }
       }
       output.handlers += ` }\n`;
