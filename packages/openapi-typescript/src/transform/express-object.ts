@@ -7,15 +7,12 @@ const httpMethods = ["get", "put", "post", "delete", "options", "head", "patch",
 function getResponseTypes(operationId: string, responsesObj?: Record<string, any>): string {
   if (!responsesObj) return "void";
 
-  const responses = Object.keys(responsesObj)
-    .map(
-      (httpStatusCode) => {
-        if (responsesObj[httpStatusCode]?.content?.["application/json"]) {
-          return `operations["${operationId}"]["responses"]["${httpStatusCode}"]["content"]["application/json"]`;
-        }
-        return `operations["${operationId}"]["responses"]["${httpStatusCode}"]`;
-      }
-    );
+  const responses = Object.keys(responsesObj).map((httpStatusCode) => {
+    if (responsesObj[httpStatusCode]?.content?.["application/json"]) {
+      return `operations["${operationId}"]["responses"]["${httpStatusCode}"]["content"]["application/json"]`;
+    }
+    return `operations["${operationId}"]["responses"]["${httpStatusCode}"]`;
+  });
   if (responses?.length) {
     return responses.join(" | ");
   }
@@ -24,8 +21,8 @@ function getResponseTypes(operationId: string, responsesObj?: Record<string, any
 
 function getRequestBody(ctx: GlobalContext, operationId: string, body?: ReferenceObject | RequestBodyObject) {
   if (!body) return "never";
-  console.log('op', operationId, body);
-  const realBody = '$ref' in body ? ctx.parameters[body.$ref] : body;
+  console.log("op", operationId, body);
+  const realBody = "$ref" in body ? ctx.parameters[body.$ref] : body;
   if (realBody.required) {
     return `operations["${operationId}"]["requestBody"]["content"]["application/json"]`;
   }
@@ -76,82 +73,84 @@ function operationRequestType(spec: OperationObject, pathItem: PathItemObject, c
   // Request locals
   params.push("RequestLocals");
 
-  const parts = [
-    indent('Request<', 3),
-    params.map((p) => indent(p, 4)).join(', \n'),
-    indent('>,', 3),
-  ];
+  const parts = [indent("Request<", 3), params.map((p) => indent(p, 4)).join(", \n"), indent(">,", 3)];
 
-  parts.push(indent('AppLocals,', 3));
+  parts.push(indent("AppLocals,", 3));
 
   if (hasQuery) {
     parts.push(indent(`operations["${spec.operationId}"]["parameters"]["query"]`, 3));
   } else {
-    parts.push(indent('never', 3));
+    parts.push(indent("never", 3));
   }
-  return parts.join('\n');
+  return parts.join("\n");
 }
 
 export function buildExpressObject(pathsObject: PathsObject, ctx: GlobalContext) {
-  const output = ['{'];
+  const output = ["{"];
 
   if (Object.keys(pathsObject).length) {
     for (const id of Object.keys(pathsObject)) {
       const detail = pathsObject[id];
-      httpMethods.filter((method) => detail[method]).forEach((method) => {
-        const spec = detail[method] as OperationObject;
-        output.push(indent(`${spec.operationId}: {`, 1));
-        output.push(indent(`requestBody: ${getRequestBody(ctx, spec.operationId!, spec.requestBody)};`, 2));
-        output.push(indent(`responses: ${getResponseTypes(spec.operationId!, spec.responses)};`, 2));
-        output.push(indent(`response: Response<express<AppLocals, RequestLocals>['${spec.operationId}']['responses']>;`, 2));
-        output.push(indent(`request: ExpressRequest<\n${operationRequestType(spec, detail, ctx)}>;`, 2));
-        output.push(indent(`handler: (`, 2));
-        output.push(indent(`req: express<AppLocals, RequestLocals>['${spec.operationId}']['request'],`, 3));
-        output.push(indent(`res: express<AppLocals, RequestLocals>['${spec.operationId}']['response'],`, 3));
-        output.push(indent(') => void | Promise<void>;', 2));
-        output.push(indent('}', 1));
-      });
+      httpMethods
+        .filter((method) => detail[method])
+        .forEach((method) => {
+          const spec = detail[method] as OperationObject;
+          output.push(indent(`${spec.operationId}: {`, 1));
+          output.push(indent(`requestBody: ${getRequestBody(ctx, spec.operationId!, spec.requestBody)};`, 2));
+          output.push(indent(`responses: ${getResponseTypes(spec.operationId!, spec.responses)};`, 2));
+          output.push(indent(`response: Response<express<AppLocals, RequestLocals>['${spec.operationId}']['responses']>;`, 2));
+          output.push(indent(`request: ExpressRequest<\n${operationRequestType(spec, detail, ctx)}>;`, 2));
+          output.push(indent(`handler: (`, 2));
+          output.push(indent(`req: express<AppLocals, RequestLocals>['${spec.operationId}']['request'],`, 3));
+          output.push(indent(`res: express<AppLocals, RequestLocals>['${spec.operationId}']['response'],`, 3));
+          output.push(indent(") => void | Promise<void>;", 2));
+          output.push(indent("}", 1));
+        });
     }
   }
 
-  output.push('}');
-  return output.join('\n');
+  output.push("}");
+  return output.join("\n");
 }
 
 export function transformHandlers(pathsObject: PathsObject, ctx: GlobalContext) {
-  const output = ['{'];
+  const output = ["{"];
 
   if (Object.keys(pathsObject).length) {
     for (const id of Object.keys(pathsObject)) {
       const detail = pathsObject[id];
       output.push(indent(`'${id}': {`, 1));
-      httpMethods.filter((method) => detail[method]).forEach((method) => {
-        const spec = detail[method] as OperationObject;
-        output.push(indent(`${method}: express<AppLocals, RequestLocals>['${spec.operationId}']['handler'];`, 2));
-      });
+      httpMethods
+        .filter((method) => detail[method])
+        .forEach((method) => {
+          const spec = detail[method] as OperationObject;
+          output.push(indent(`${method}: express<AppLocals, RequestLocals>['${spec.operationId}']['handler'];`, 2));
+        });
       output.push(indent(`};`, 1));
     }
   }
-  output.push('}');
-  return output.join('\n');
+  output.push("}");
+  return output.join("\n");
 }
 
 export function transformHandlersByOperation(pathsObject: PathsObject, ctx: GlobalContext) {
-  const output = ['{'];
+  const output = ["{"];
 
   if (Object.keys(pathsObject).length) {
     for (const id of Object.keys(pathsObject)) {
       const detail = pathsObject[id];
-      httpMethods.filter((method) => detail[method]).forEach((method) => {
-        const spec = detail[method] as OperationObject;
-        if (spec.operationId) {
-          output.push(indent(`${spec.operationId}: express<AppLocals, RequestLocals>['${spec.operationId}']['handler'];`, 2));
-        }
-      });
+      httpMethods
+        .filter((method) => detail[method])
+        .forEach((method) => {
+          const spec = detail[method] as OperationObject;
+          if (spec.operationId) {
+            output.push(indent(`${spec.operationId}: express<AppLocals, RequestLocals>['${spec.operationId}']['handler'];`, 2));
+          }
+        });
     }
   }
-  output.push('}');
-  return output.join('\n');
+  output.push("}");
+  return output.join("\n");
 }
 
 export function transformExpress(pathsObject: PathsObject, ctx: GlobalContext) {
@@ -159,5 +158,5 @@ export function transformExpress(pathsObject: PathsObject, ctx: GlobalContext) {
     express: buildExpressObject(pathsObject, ctx),
     pathHandlers: transformHandlers(pathsObject, ctx),
     operationHandlers: transformHandlersByOperation(pathsObject, ctx),
-  }
+  };
 }
