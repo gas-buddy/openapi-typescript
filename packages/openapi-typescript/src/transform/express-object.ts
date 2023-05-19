@@ -77,7 +77,7 @@ function operationRequestType(spec: OperationObject, pathItem: PathItemObject, c
   parts.push(indent("AppLocals,", 3));
 
   if (hasQuery) {
-    parts.push(indent(`operations["${spec.operationId}"]["parameters"]["query"]`, 3));
+    parts.push(indent(`Required<operations["${spec.operationId}"]["parameters"]>["query"]`, 3));
   } else {
     parts.push(indent("never", 3));
   }
