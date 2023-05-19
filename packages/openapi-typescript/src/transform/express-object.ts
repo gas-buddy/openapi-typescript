@@ -21,9 +21,8 @@ function getResponseTypes(operationId: string, responsesObj?: Record<string, any
 
 function getRequestBody(ctx: GlobalContext, operationId: string, body?: ReferenceObject | RequestBodyObject) {
   if (!body) return "never";
-  console.log("op", operationId, body);
   const realBody = "$ref" in body ? ctx.parameters[body.$ref] : body;
-  if (realBody.required) {
+  if (realBody?.required) {
     return `operations["${operationId}"]["requestBody"]["content"]["application/json"]`;
   }
   return `Required<operations["${operationId}"]>["requestBody"]["content"]["application/json"] | void`;
